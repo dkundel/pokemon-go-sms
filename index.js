@@ -5,6 +5,7 @@ const bodyParser = require('body-parser');
 const request = require('request');
 const moment = require('moment');
 const geocoder = require('node-geocoder')({ provider: 'openstreetmap' });
+const geolib = require('geolib');
 
 const app = express();
 
@@ -17,6 +18,8 @@ const PORT = process.env.PORT || 3000;
 const POKEVISION_API = 'https://pokevision.com/map/data';
 
 const POKEDEX = `,Bulbasaur,Ivysaur,Venusaur,Charmander,Charmeleon,Charizard,Squirtle,Wartortle,Blastoise,Caterpie,Metapod,Butterfree,Weedle,Kakuna,Beedrill,Pidgey,Pidgeotto,Pidgeot,Rattata,Raticate,Spearow,Fearow,Ekans,Arbok,Pikachu,Raichu,Sandshrew,Sandslash,Nidoran♀,Nidorina,Nidoqueen,Nidoran♂,Nidorino,Nidoking,Clefairy,Clefable,Vulpix,Ninetales,Jigglypuff,Wigglytuff,Zubat,Golbat,Oddish,Gloom,Vileplume,Paras,Parasect,Venonat,Venomoth,Diglett,Dugtrio,Meowth,Persian,Psyduck,Golduck,Mankey,Primeape,Growlithe,Arcanine,Poliwag,Poliwhirl,Poliwrath,Abra,Kadabra,Alakazam,Machop,Machoke,Machamp,Bellsprout,Weepinbell,Victreebel,Tentacool,Tentacruel,Geodude,Graveler,Golem,Ponyta,Rapidash,Slowpoke,Slowbro,Magnemite,Magneton,Farfetch'd,Doduo,Dodrio,Seel,Dewgong,Grimer,Muk,Shellder,Cloyster,Gastly,Haunter,Gengar,Onix,Drowzee,Hypno,Krabby,Kingler,Voltorb,Electrode,Exeggcute,Exeggutor,Cubone,Marowak,Hitmonlee,Hitmonchan,Lickitung,Koffing,Weezing,Rhyhorn,Rhydon,Chansey,Tangela,Kangaskhan,Horsea,Seadra,Goldeen,Seaking,Staryu,Starmie,Mr. Mime,Scyther,Jynx,Electabuzz,Magmar,Pinsir,Tauros,Magikarp,Gyarados,Lapras,Ditto,Eevee,Vaporeon,Jolteon,Flareon,Porygon,Omanyte,Omastar,Kabuto,Kabutops,Aerodactyl,Snorlax,Articuno,Zapdos,Moltres,Dratini,Dragonair,Dragonite,Mewtwo,Mew`.split(',');
+
+const FILTER_POKEMON = `Rattata,Pidgey,Zubat,Spearow`;
 
 function getPokemonAround(location) {
   return new Promise((resolve, reject) => {
@@ -32,24 +35,33 @@ function getPokemonAround(location) {
   });
 }
 
-function extractPokeInfo(pokemon) {
-  let { longitude, latitude } = pokemon;
-  let expirationTime = pokemon.expiration_time;
-  let name = POKEDEX[pokemon.pokemonId];
-  let duration = moment.duration(expirationTime * 1000 - Date.now()).humanize();
+function extractPokeInfo(baseLocation) {
+  return (pokemon) => {
+    let { longitude, latitude } = pokemon;
+    let expirationTime = pokemon.expiration_time;
+    let name = POKEDEX[pokemon.pokemonId];
+    let duration = moment.duration(expirationTime * 1000 - Date.now()).humanize();
+    let distance = geolib.getDistance(baseLocation, { longitude, latitude });
 
-  return { name, duration, longitude, latitude, expirationTime };
+    return { name, duration, longitude, latitude, expirationTime, distance };
+  }
 }
 
 function sortPokemon(pokemonA, pokemonB) {
-  return pokemonA.expirationTime - pokemonB.expirationTime;
+  return pokemonA.distance - pokemonB.distance;
+}
+
+function filterBoringPokemon(pokemon) {
+  return FILTER_POKEMON.indexOf(pokemon.name) === -1;
 }
 
 function getPokemonByAddress(address) {
+  let baseLocation;
   return geocoder.geocode(address).then(result => {
-    return result[0] || { longitude: 0, latitude: 0 };
+    baseLocation = result[0] || { longitude: 0, latitude: 0 };
+    return baseLocation;
   }).then(getPokemonAround).then(pokemon => {
-    return pokemon.map(extractPokeInfo).sort(sortPokemon);
+    return pokemon.map(extractPokeInfo(baseLocation)).filter(filterBoringPokemon).sort(sortPokemon);
   });
 }
 

@@ -24,6 +24,7 @@
   "dependencies": {
     "body-parser": "^1.15.2",
     "express": "^4.14.0",
+    "geolib": "^2.0.21",
     "moment": "^2.14.1",
     "node-geocoder": "^3.13.1",
     "request": "^2.74.0"
