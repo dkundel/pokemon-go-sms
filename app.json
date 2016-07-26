@@ -1,0 +1,18 @@
+{
+  "name": "Pokemon GO SMS Service",
+  "description": "Service to search for Pokemon around you using Pokevision.",
+  "website": "https://github.com/dkundel",
+  "repository": "https://github.com/dkundel/pokemon-go-sms",
+  "success_url": "/San Francisco",
+  "keywords": ["twilio", "sms", "pokemon"],
+  "env": {
+    "TWILIO_ACCOUNT_SID": {
+      "description": "Your Twilio Account SID",
+      "required": true
+    },
+    "TWILIO_AUTH_TOKEN": {
+      "description": "Your Twilio Auth Token",
+      "required": true
+    }
+  }
+}
