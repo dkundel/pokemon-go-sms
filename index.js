@@ -123,7 +123,7 @@ app.get('/:address', (req, res) => {
 });
 
 app.post('/incoming', (req, res) => {
-  let message = req.body.Body.replace(/https:\/\/goo.gl\/maps\/[A-Za-z0-9]*$/, '');
+  let message = req.body.Body.replace(/https:\/\/goo.gl\/maps\/[A-Za-z0-9]*/gi, '');
   if (message.toLowerCase().trim().indexOf('subscribe:') === 0) {
     message = message.substr('subscribe:'.length);
     let [name, location] = message.split(';').map(m => m.trim());
