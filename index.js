@@ -23,6 +23,8 @@ const POKEDEX = `,Bulbasaur,Ivysaur,Venusaur,Charmander,Charmeleon,Charizard,Squ
 
 const FILTER_POKEMON = `Rattata,Pidgey,Zubat,Spearow`;
 
+const SubscribeMap = new Map();
+
 function getPokemonAround(location) {
   return new Promise((resolve, reject) => {
     request(`${POKEVISION_API}/${location.latitude}/${location.longitude}` , (err, response, body) => {
@@ -67,13 +69,42 @@ function getPokemonByAddress(address) {
   });
 }
 
-function formatText(pokeList) {
+function formatText(pokeList, location = '') {
   let formattedPokemon = pokeList.slice(0, TAKE_COUNT).map(pokemon => {
     return `${pokemon.name}, ${pokemon.distance}m, ${pokemon.duration}`;
   }).join(`\n`)
-  return `There are the following Pokemon around:
+  return `There are the following Pokemon around ${location}:
 ${formattedPokemon}`;
 }
+
+function subscribe(pokeName, location, number) {
+  SubscribeMap.set(`${number},${pokeName}`, location);
+}
+
+function checkForPokemon() {
+  console.log('Checking for pokemon...');
+  for (let [infoStr, location] of SubscribeMap) {
+    let infoArr = infoStr.split(',');
+    let info = {
+      number: infoArr[0],
+      pokeName: infoArr[1]
+    }
+    getPokemonByAddress(location).then(result => {
+      let availablePokemon = result.filter(pokemon => pokemon.name === info.pokeName);
+      if (availablePokemon.length !== 0) {
+        let body = formatText(availablePokemon, location);
+        let from = 'POKEWATCH';
+        let to = info.number;
+        console.log(`FOUND ${availablePokemon[0].name}`);
+        SubscribeMap.delete(infoStr);
+        return client.sendMessage({body, from, to});
+      }
+      return Promise.resolve(true);
+    });
+  }
+}
+
+setInterval(checkForPokemon, 30*1000);
 
 app.get('/:address', (req, res) => {
   getPokemonByAddress(req.params.address).then(result => {
@@ -82,19 +113,27 @@ app.get('/:address', (req, res) => {
 });
 
 app.post('/incoming', (req, res) => {
-  console.log(`Address: ${req.body.Body}`);
-  getPokemonByAddress(req.body.Body).then(result => {
-    let targetPhoneNumber = req.body.From;
-    let senderPhoneNumber = req.body.To;
-    let message = formatText(result);
-    return client.sendMessage({
-      from: senderPhoneNumber,
-      to: targetPhoneNumber,
-      body: message
-    }).then(() => {
-      res.status(200).send();
+  let message = req.body.Body;
+  if (message.toLowerCase().trim().indexOf('subscribe:') === 0) {
+    message = message.substr('subscribe:'.length);
+    let [name, location] = message.split(';').map(m => m.trim());
+    subscribe(name, location, req.body.From);
+    res.type('text/plain').send(`We will be on the look for ${name}`);
+  } else {
+    console.log(`Address: ${req.body.Body}`);
+    getPokemonByAddress(req.body.Body).then(result => {
+      let targetPhoneNumber = req.body.From;
+      let senderPhoneNumber = req.body.To;
+      let message = formatText(result);
+      return client.sendMessage({
+        from: senderPhoneNumber,
+        to: targetPhoneNumber,
+        body: message
+      }).then(() => {
+        res.status(200).send();
+      });
     });
-  });
+  }
 });
 
 app.listen(PORT, () => {
