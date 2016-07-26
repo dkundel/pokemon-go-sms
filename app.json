@@ -13,6 +13,10 @@
     "TWILIO_AUTH_TOKEN": {
       "description": "Your Twilio Auth Token",
       "required": true
+    },
+    "POKEMON_FILTER": {
+      "description": "List of Pokemon that you don't want to see.",
+      "required": false
     }
   }
 }
