@@ -65,16 +65,24 @@ function getPokemonByAddress(address) {
     baseLocation = result[0] || { longitude: 0, latitude: 0 };
     return baseLocation;
   }).then(getPokemonAround).then(pokemon => {
-    return pokemon.map(extractPokeInfo(baseLocation)).filter(filterBoringPokemon).sort(sortPokemon);
+    return {
+      result: pokemon.map(extractPokeInfo(baseLocation)).filter(filterBoringPokemon).sort(sortPokemon),
+      location: baseLocation
+    }
   });
 }
 
-function formatText(pokeList, location = '') {
+function formatText(pokeList, location,locationStr = '') {
   let formattedPokemon = pokeList.slice(0, TAKE_COUNT).map(pokemon => {
     return `${pokemon.name}, ${pokemon.distance}m, ${pokemon.duration}`;
   }).join(`\n`)
-  return `There are the following Pokemon around ${location}:
-${formattedPokemon}`;
+  return `There are the following Pokemon around ${locationStr}:
+${formattedPokemon}
+${getPokevisionUrl(location)}`;
+}
+
+function getPokevisionUrl(location) {
+  return `https://pokevision.com/#/@${location.latitude},${location.longitude}`;
 }
 
 function subscribe(pokeName, location, number) {
@@ -83,16 +91,17 @@ function subscribe(pokeName, location, number) {
 
 function checkForPokemon() {
   console.log('Checking for pokemon...');
-  for (let [infoStr, location] of SubscribeMap) {
+  for (let [infoStr, locationStr] of SubscribeMap) {
     let infoArr = infoStr.split(',');
     let info = {
       number: infoArr[0],
       pokeName: infoArr[1]
     }
-    getPokemonByAddress(location).then(result => {
+    getPokemonByAddress(locationStr).then(item => {
+      let { location, result } = item;
       let availablePokemon = result.filter(pokemon => pokemon.name === info.pokeName);
       if (availablePokemon.length !== 0) {
-        let body = formatText(availablePokemon, location);
+        let body = formatText(availablePokemon, location, locationStr);
         let from = 'POKEWATCH';
         let to = info.number;
         console.log(`FOUND ${availablePokemon[0].name}`);
@@ -107,13 +116,14 @@ function checkForPokemon() {
 setInterval(checkForPokemon, 30*1000);
 
 app.get('/:address', (req, res) => {
-  getPokemonByAddress(req.params.address).then(result => {
-    res.type('text/plain').send(formatText(result));
+  getPokemonByAddress(req.params.address).then(item => {
+    let { location, result } = item;
+    res.type('text/plain').send(formatText(result, location));
   });
 });
 
 app.post('/incoming', (req, res) => {
-  let message = req.body.Body;
+  let message = req.body.Body.replace(/https:\/\/goo.gl\/maps\/[A-Za-z0-9]*$/, '');
   if (message.toLowerCase().trim().indexOf('subscribe:') === 0) {
     message = message.substr('subscribe:'.length);
     let [name, location] = message.split(';').map(m => m.trim());
@@ -121,10 +131,11 @@ app.post('/incoming', (req, res) => {
     res.type('text/plain').send(`We will be on the look for ${name}`);
   } else {
     console.log(`Address: ${req.body.Body}`);
-    getPokemonByAddress(req.body.Body).then(result => {
+    getPokemonByAddress(req.body.Body).then(item => {
+      let { location, result } = item;
       let targetPhoneNumber = req.body.From;
       let senderPhoneNumber = req.body.To;
-      let message = formatText(result);
+      let message = formatText(result, location);
       return client.sendMessage({
         from: senderPhoneNumber,
         to: targetPhoneNumber,
