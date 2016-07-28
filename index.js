@@ -117,8 +117,8 @@ function watchForPokemon() {
       let { location, pokemon } = info;
       let availablePokemon = pokemon.filter(poke => poke.name === wantedPokemon);
       if (availablePokemon.length !== 0) {
-        let body = formatText(availablePokemon, location);
-        let from = 'POKEWATCH';
+        let body = formatPokeList(availablePokemon, location);
+        let from = 'POKEALERT';
         let to = number;
         PokeWatchers.delete(infoStr);
         return client.sendMessage({body, from, to});
