@@ -10,6 +10,7 @@ const twilio = require('twilio');
 const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
 const app = express();
+const twilioGating = twilio.webhook();
 
 app.use(bodyParser.json({})) 
 app.use(bodyParser.urlencoded({
@@ -82,7 +83,7 @@ app.get('/:address', (req, res) => {
   });
 });
 
-app.post('/incoming', (req, res) => {
+app.post(twilioGating, '/incoming', (req, res) => {
   let message = req.body.Body;
   if (message.toLowerCase().trim().indexOf('subscribe:') === 0) {
     message = message.substr('subscribe:'.length);
