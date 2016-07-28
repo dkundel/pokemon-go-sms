@@ -5,12 +5,12 @@ const bodyParser = require('body-parser');
 
 const app = express();
 
-const PORT = process.env.PORT || 3000;
-
 app.use(bodyParser.json({})) 
 app.use(bodyParser.urlencoded({
   extended: true
 }));
+
+const PORT = process.env.PORT || 3000;
 
 app.get('/:address', (req, res) => {
   res.type('text/plain').send(`Ahoy! ${req.params.address}`);
