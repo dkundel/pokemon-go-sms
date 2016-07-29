@@ -32,6 +32,16 @@
       "required": true,
       "value": "POKEWATCH"
     },
+    "SEARCH_STEPS": {
+      "description": "Number of steps in each direction. Increase with caution. Request time scales exponentially",
+      "required": true,
+      "value": "2"
+    },
+    "REQUEST_DELAY": {
+      "description": "Throttle requests to avoid Niantic throttling. Needs to scale with SEARCH_STEPS",
+      "required": true,
+      "value": "100"
+    },
     "MY_PHONE_NUMBER": {
       "description": "Your physical phone number",
       "required": true

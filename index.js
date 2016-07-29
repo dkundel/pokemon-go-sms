@@ -25,6 +25,8 @@ const PERMANENT_LOCATIONS = (process.env.PERMANENT_LOCATIONS || 'Rosenthaler Pla
 const IMPORTANT_POKEMON = process.env.IMPORTANT_POKEMON || 'Charmander,Squirtle,Bulbasur,Pikachu';
 const CURRENT_POKEMON = new Map();
 const NOTIFIER_SENDER_ID = process.env.TWILIO_SENDER_ID || 'POKEWATCH';
+const SEARCH_STEPS = parseInt(process.env.SEARCH_STEPS, 10) || 2;
+const REQUEST_DELAY = parseInt(process.env.REQUEST_DELAY, 10) || 100;
 
 function enhancePokeInfo(pokemon) {
   pokemon.duration = moment.duration(pokemon.expirationTime - Date.now()).humanize();
@@ -41,7 +43,7 @@ function filterCommon(pokemon) {
 }
 
 function getPokemonByAddress(address) {
-  return spotter.getNearby(address, { steps: 2, requestDelay: 100 }).then(pokemon => {
+  return spotter.getNearby(address, { steps: SEARCH_STEPS, requestDelay: REQUEST_DELAY }).then(pokemon => {
     return pokemon.map(enhancePokeInfo).filter(filterCommon).sort(sortClosestPokemon)
   });
 }
@@ -59,7 +61,7 @@ app.get('/dashboard', (req, res) => {
   for (let [address, pokemon] of CURRENT_POKEMON) {
     result += `${formatPokeList(pokemon, address, '<br>')}
 <br>
-<img src="${Pokespotter.getMapsUrl(address, pokemon, 2)}"
+<img src="${Pokespotter.getMapsUrl(address, pokemon, SEARCH_STEPS)}"
 <hr><br>`;
   }
 
@@ -90,7 +92,7 @@ app.post('/incoming', (req, res) => {
   } else {
     getPokemonByAddress(message).then(pokemon => {
       let response = formatPokeList(pokemon, message);
-      let mapsUrl = Pokespotter.getMapsUrl(message, pokemon, 2);
+      let mapsUrl = Pokespotter.getMapsUrl(message, pokemon, SEARCH_STEPS);
       TinyUrl.shorten(mapsUrl, (shortUrl) => {
         res.send(`<Response><Message>${response}\n${shortUrl}</Message></Response>`);
       });
@@ -110,7 +112,7 @@ function watchForPokemon() {
           console.log(pokemon);
           let availablePokemon = pokemon.filter(poke => IMPORTANT_POKEMON.indexOf(poke.name) !== -1);
           if (availablePokemon.length !== 0) {
-            let mapsUrl = Pokespotter.getMapsUrl(address, availablePokemon, 2)
+            let mapsUrl = Pokespotter.getMapsUrl(address, availablePokemon, SEARCH_STEPS)
             return new Promise((resolve, reject) => {
               TinyUrl.shorten(mapsUrl, (shortUrl) => {
                 let body = formatPokeList(availablePokemon, address) + '\n' + shortUrl;
