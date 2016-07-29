@@ -43,8 +43,8 @@ function getPokemonByAddress(address) {
 }
 
 function formatPokeList(pokeList, address) {
-  let formattedPokemon = pokeList.map(pokemon => {
-    return `${pokemon.name}, ${pokemon.distance}m, ${pokemon.duration}`;
+  let formattedPokemon = pokeList.map((pokemon, idx) => {
+    return `${idx+1}) ${pokemon.name}, ${pokemon.distance}m, ${pokemon.duration}`;
   }).join(`\n`)
   return `There are the following Pokemon around ${address}:
 ${formattedPokemon}`;
@@ -87,7 +87,7 @@ function watchForPokemon() {
   for(let [keyInfo, address] of PokeWatchers) {
     let [number, wantedPokemon] = keyInfo.split(',');
     getPokemonByAddress(address).then(pokemon => {
-      let availablePokemon = pokemon.filter(poke => poke.name === wantedPokemon);
+      let availablePokemon = pokemon.filter(poke => poke.name.toLowerCase() === wantedPokemon.toLowerCase());
       if (availablePokemon.length !== 0) {
         let body = formatPokeList(availablePokemon, address);
         let from = 'POKEWATCH';
