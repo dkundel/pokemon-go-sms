@@ -21,6 +21,10 @@ const PokeWatchers = new Map();
 const PORT = process.env.PORT || 3000;
 const POKEDEX = Pokespotter.Pokedex;
 const spotter = Pokespotter();
+const PERMANENT_LOCATIONS = (process.env.PERMANENT_LOCATIONS || 'Rosenthaler Platz, Berlin; Alexanderplatz, Berlin; Rosa-Luxemburg-Platz, Berlin').split(';').map(l => l.trim());
+const IMPORTANT_POKEMON = process.env.IMPORTANT_POKEMON || 'Charmander,Squirtle,Bulbasur,Pikachu';
+const CURRENT_POKEMON = new Map();
+const NOTIFIER_SENDER_ID = process.env.TWILIO_SENDER_ID || 'POKEWATCH';
 
 function enhancePokeInfo(pokemon) {
   pokemon.duration = moment.duration(pokemon.expirationTime - Date.now()).humanize();
@@ -42,13 +46,25 @@ function getPokemonByAddress(address) {
   });
 }
 
-function formatPokeList(pokeList, address) {
-  let formattedPokemon = pokeList.map(pokemon => {
-    return `${pokemon.name}, ${pokemon.distance}m, ${pokemon.duration}`;
-  }).join(`\n`)
-  return `There are the following Pokemon around ${address}:
-${formattedPokemon}`;
+function formatPokeList(pokeList, address, delimiter) {
+  delimiter = delimiter || '\n';
+  let formattedPokemon = pokeList.map((pokemon, idx) => {
+    return `${idx+1}) ${pokemon.name}, ${pokemon.distance}m, ${pokemon.duration}`;
+  }).join(delimiter)
+  return `There are the following Pokemon around ${address}:${delimiter}${formattedPokemon}`;
 }
+
+app.get('/dashboard', (req, res) => {
+  let result = '';
+  for (let [address, pokemon] of CURRENT_POKEMON) {
+    result += `${formatPokeList(pokemon, address, '<br>')}
+<br>
+<img src="${Pokespotter.getMapsUrl(address, pokemon, 2)}"
+<hr><br>`;
+  }
+
+  res.send(result);
+});
 
 app.get('/:address', (req, res) => {
   let address = req.params.address;
@@ -84,20 +100,36 @@ app.post('/incoming', (req, res) => {
 
 function watchForPokemon() {
   console.log('Looking for Pokemon...');
-  for(let [keyInfo, address] of PokeWatchers) {
-    let [number, wantedPokemon] = keyInfo.split(',');
-    getPokemonByAddress(address).then(pokemon => {
-      let availablePokemon = pokemon.filter(poke => poke.name === wantedPokemon);
-      if (availablePokemon.length !== 0) {
-        let body = formatPokeList(availablePokemon, address);
-        let from = 'POKEWATCH';
-        let to = number;
-        PokeWatchers.delete(keyInfo);
-        return client.sendMessage({body, from, to});
-      }
-      return Promise.resolve(true);
+
+  function visitLocations() {
+    var p = Promise.resolve();
+    PERMANENT_LOCATIONS.forEach(function (address) {
+      p = p.then(function () { 
+        return getPokemonByAddress(address).then(pokemon => {
+          CURRENT_POKEMON.set(address, pokemon);
+          console.log(pokemon);
+          let availablePokemon = pokemon.filter(poke => IMPORTANT_POKEMON.indexOf(poke.name) !== -1);
+          if (availablePokemon.length !== 0) {
+            let mapsUrl = Pokespotter.getMapsUrl(address, availablePokemon, 2)
+            return new Promise((resolve, reject) => {
+              TinyUrl.shorten(mapsUrl, (shortUrl) => {
+                let body = formatPokeList(availablePokemon, address) + '\n' + shortUrl;
+                let from = NOTIFIER_SENDER_ID;
+                let to = process.env.MY_PHONE_NUMBER;
+                resolve(client.sendMessage({body, from, to}));
+              });
+            })
+          }
+          return Promise.resolve(true);
+        });
+      });
     });
+    return p;
   }
+
+  visitLocations().catch(err => {
+    console.error(err);
+  })
 }
 
 app.listen(PORT, () => {

@@ -3,7 +3,7 @@
   "description": "Service to search for Pokemon around you using Pokevision.",
   "website": "https://github.com/dkundel",
   "repository": "https://github.com/dkundel/pokemon-go-sms",
-  "success_url": "/San Francisco",
+  "success_url": "/dashboard",
   "keywords": ["twilio", "sms", "pokemon"],
   "env": {
     "TWILIO_ACCOUNT_SID": {
@@ -27,8 +27,25 @@
       "required": true,
       "value": "google"
     },
+    "TWILIO_SENDER_ID": {
+      "description": "Alphanumeric (has to be activated) or Twilio Phone Number",
+      "required": true,
+      "value": "POKEWATCH"
+    },
+    "MY_PHONE_NUMBER": {
+      "description": "Your physical phone number",
+      "required": true
+    },
     "POKEMON_FILTER": {
-      "description": "List of Pokemon that you don't want to see.",
+      "description": "List of Pokemon that you don't want to see. Comma separated",
+      "required": false
+    },
+    "PERMANENT_LOCATIONS": {
+      "description": "Semi-colon separated list of locations to watch",
+      "required": false
+    },
+    "IMPORTANT_POKEMON": {
+      "description": "Comma separted list of Pokemon you want to be notified for",
       "required": false
     }
   }
