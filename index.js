@@ -44,7 +44,7 @@ function getPokemonByAddress(address) {
 
 function formatPokeList(pokeList, address) {
   let formattedPokemon = pokeList.map((pokemon, idx) => {
-    return `${idx}) ${pokemon.name}, ${pokemon.distance}m, ${pokemon.duration}`;
+    return `${idx+1}) ${pokemon.name}, ${pokemon.distance}m, ${pokemon.duration}`;
   }).join(`\n`)
   return `There are the following Pokemon around ${address}:
 ${formattedPokemon}`;
