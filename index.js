@@ -37,7 +37,7 @@ function filterCommon(pokemon) {
 }
 
 function getPokemonByAddress(address) {
-  return spotter.getNearby(address, { steps: 2 }).then(pokemon => {
+  return spotter.getNearby(address, { steps: 2, requestDelay: 100 }).then(pokemon => {
     return pokemon.map(enhancePokeInfo).filter(filterCommon).sort(sortClosestPokemon)
   });
 }
